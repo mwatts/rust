@@ -15,6 +15,10 @@ impl MirPass<'_> for UnreachablePropagation {
     fn run_pass<'tcx>(&self, _tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
         let mut unreachable_blocks = FxHashSet::default();
         let mut replacements = FxHashMap::default();
+        let is_asm_stmt = |stmt: &Statement<'_>| match stmt.kind {
+            StatementKind::InlineAsm(..) => true,
+            _ => false,
+        };
 
         for (bb, bb_data) in traversal::postorder(body) {
             let terminator = bb_data.terminator();
@@ -22,14 +26,20 @@ impl MirPass<'_> for UnreachablePropagation {
             if let TerminatorKind::Unreachable = terminator.kind {
                 unreachable_blocks.insert(bb);
             } else {
-                let is_unreachable_pred = |succ: &'_ BasicBlock| unreachable_blocks.contains(succ);
-                let mut mut_terminator = terminator.clone();
+                // HACK: If the block contains any asm statement the optimization is not attempted.
+                // This is a temporal solution that handles possibly diverging asm statements.
+                if bb_data.statements.iter().any(|stmt| is_asm_stmt(stmt)) {
+                    continue;
+                }
 
-                if remove_successors(&mut mut_terminator, is_unreachable_pred) {
-                    replacements.insert(bb, mut_terminator.kind.clone());
-                    if let TerminatorKind::Unreachable = mut_terminator.kind {
+                let is_unreachable = |succ: BasicBlock| unreachable_blocks.contains(&succ);
+                let terminator_kind_opt = remove_successors(&terminator.kind, is_unreachable);
+
+                if let Some(terminator_kind) = terminator_kind_opt {
+                    if let TerminatorKind::Unreachable = terminator_kind {
                         unreachable_blocks.insert(bb);
                     }
+                    replacements.insert(bb, terminator_kind);
                 }
             }
         }
@@ -45,53 +55,48 @@ impl MirPass<'_> for UnreachablePropagation {
     }
 }
 
-fn remove_successors<F>(terminator: &mut Terminator<'_>, pred: F) -> bool
-    where F: Fn(&BasicBlock) -> bool
+fn remove_successors<F>(
+    terminator_kind: &TerminatorKind<'tcx>,
+    predicate: F
+) -> Option<TerminatorKind<'tcx>>
+    where F: Fn(BasicBlock) -> bool
 {
-    let mut removed_successor = false;
-
-    match &terminator.kind {
-        TerminatorKind::Goto { target } => {
-            if pred(target) {
-                terminator.kind = TerminatorKind::Unreachable;
-                removed_successor = true;
-            }
+    match *terminator_kind {
+        TerminatorKind::Goto { target } if predicate(target) =>{
+            Some(TerminatorKind::Unreachable)
         },
-        TerminatorKind::SwitchInt { discr, switch_ty, values, targets } => {
+        TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
             let original_targets_len = targets.len();
             let (otherwise, targets) = targets.split_last().unwrap();
-            let retained = values.iter().zip(targets.iter()).filter(|(_, t)| !pred(t)).
+            let retained = values.iter().zip(targets.iter()).filter(|(_, &t)| !predicate(t)).
                 collect::<Vec<_>>();
             let mut values = retained.iter().map(|&(v, _)| *v).collect::<Vec<_>>();
             let mut targets = retained.iter().map(|&(_, d)| *d).collect::<Vec<_>>();
 
-            if !pred(otherwise) {
+            if !predicate(*otherwise) {
                 targets.push(*otherwise);
+            } else {
+                values.truncate(values.len() - 1);
             }
 
             let retained_targets_len = targets.len();
 
             if targets.is_empty() {
-                terminator.kind = TerminatorKind::Unreachable;
+                Some(TerminatorKind::Unreachable)
             } else if targets.len() == 1 {
-                terminator.kind = TerminatorKind::Goto { target: targets[0] }
-            } else {
-                if values.len() == retained_targets_len {
-                    values.truncate(retained_targets_len - 1);
-                }
-
-                terminator.kind = TerminatorKind::SwitchInt {
+                Some(TerminatorKind::Goto { target: targets[0] })
+            } else if original_targets_len != retained_targets_len {
+                Some(TerminatorKind::SwitchInt {
                     discr: discr.clone(),
                     switch_ty,
                     values: Cow::from(values),
                     targets
-                }
+                })
+            } else {
+                None
             }
 
-            removed_successor = original_targets_len != retained_targets_len;
         },
-        _ => {}
+        _ => None
     }
-
-    removed_successor
 }
