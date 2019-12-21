@@ -12,7 +12,9 @@ use crate::transform::simplify;
 pub struct UnreachablePropagation;
 
 impl MirPass<'_> for UnreachablePropagation {
-    fn run_pass<'tcx>(&self, _tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
+    fn run_pass<'tcx>(
+        &self, _tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
+    ) {
         let mut unreachable_blocks = FxHashSet::default();
         let mut replacements = FxHashMap::default();
         let is_asm_stmt = |stmt: &Statement<'_>| match stmt.kind {
