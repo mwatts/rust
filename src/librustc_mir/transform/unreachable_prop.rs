@@ -2,18 +2,21 @@
 //! when all of their successors are unreachable. This is achieved through a
 //! post-order traversal of the blocks.
 
-use rustc::ty::TyCtxt;
-use rustc::mir::*;
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use std::borrow::Cow;
-use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
+use crate::transform::{MirPass, MirSource};
+use rustc::mir::*;
+use rustc::ty::TyCtxt;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use std::borrow::Cow;
 
 pub struct UnreachablePropagation;
 
 impl MirPass<'_> for UnreachablePropagation {
     fn run_pass<'tcx>(
-        &self, _tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        _: MirSource<'tcx>,
+        body: &mut BodyAndCache<'tcx>,
     ) {
         let mut unreachable_blocks = FxHashSet::default();
         let mut replacements = FxHashMap::default();
@@ -59,19 +62,21 @@ impl MirPass<'_> for UnreachablePropagation {
 
 fn remove_successors<F>(
     terminator_kind: &TerminatorKind<'tcx>,
-    predicate: F
+    predicate: F,
 ) -> Option<TerminatorKind<'tcx>>
-    where F: Fn(BasicBlock) -> bool
+where
+    F: Fn(BasicBlock) -> bool,
 {
     match *terminator_kind {
-        TerminatorKind::Goto { target } if predicate(target) =>{
-            Some(TerminatorKind::Unreachable)
-        },
+        TerminatorKind::Goto { target } if predicate(target) => Some(TerminatorKind::Unreachable),
         TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
             let original_targets_len = targets.len();
             let (otherwise, targets) = targets.split_last().unwrap();
-            let retained = values.iter().zip(targets.iter()).filter(|(_, &t)| !predicate(t)).
-                collect::<Vec<_>>();
+            let retained = values
+                .iter()
+                .zip(targets.iter())
+                .filter(|(_, &t)| !predicate(t))
+                .collect::<Vec<_>>();
             let mut values = retained.iter().map(|&(v, _)| *v).collect::<Vec<_>>();
             let mut targets = retained.iter().map(|&(_, d)| *d).collect::<Vec<_>>();
 
@@ -92,13 +97,12 @@ fn remove_successors<F>(
                     discr: discr.clone(),
                     switch_ty,
                     values: Cow::from(values),
-                    targets
+                    targets,
                 })
             } else {
                 None
             }
-
-        },
-        _ => None
+        }
+        _ => None,
     }
 }
