@@ -32,60 +32,57 @@ fn main() {
 //     bb2: {
 //         StorageDead(_4);
 //         _5 = discriminant(_3);
-//         switchInt(move _5) -> [0isize: bb10, 1isize: bb5, otherwise: bb4];
+//         switchInt(move _5) -> [0isize: bb9, otherwise: bb4];
 //     }
 //     bb3 (cleanup): {
 //         drop(_2) -> bb1;
 //     }
 //     bb4: {
-//         unreachable;
-//     }
-//     bb5: {
 //         StorageLive(_6);
 //         _6 = ((_3 as Err).0: std::option::NoneError);
 //         StorageLive(_8);
 //         StorageLive(_9);
 //         _9 = _6;
-//         _8 = const <std::option::NoneError as std::convert::From<std::option::NoneError>>::from(move _9) -> [return: bb7, unwind: bb3];
+//         _8 = const <std::option::NoneError as std::convert::From<std::option::NoneError>>::from(move _9) -> [return: bb6, unwind: bb3];
 //     }
-//     bb6: {
+//     bb5: {
 //         return;
 //     }
-//     bb7: {
+//     bb6: {
 //         StorageDead(_9);
-//         _0 = const <std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error(move _8) -> [return: bb8, unwind: bb3];
+//         _0 = const <std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error(move _8) -> [return: bb7, unwind: bb3];
 //     }
-//     bb8: {
+//     bb7: {
 //         StorageDead(_8);
 //         StorageDead(_6);
-//         drop(_2) -> bb9;
+//         drop(_2) -> bb8;
 //     }
-//     bb9: {
+//     bb8: {
 //         StorageDead(_2);
 //         StorageDead(_1);
 //         StorageDead(_3);
-//         goto -> bb6;
+//         goto -> bb5;
 //     }
-//     bb10: {
+//     bb9: {
 //         StorageLive(_10);
 //         _10 = ((_3 as Ok).0: u32);
 //         (*_2) = _10;
 //         StorageDead(_10);
 //         _1 = move _2;
-//         drop(_2) -> [return: bb12, unwind: bb11];
+//         drop(_2) -> [return: bb11, unwind: bb10];
 //     }
-//     bb11 (cleanup): {
+//     bb10 (cleanup): {
 //         drop(_1) -> bb1;
 //     }
-//     bb12: {
+//     bb11: {
 //         StorageDead(_2);
 //         _0 = std::option::Option::<std::boxed::Box<u32>>::Some(move _1,);
-//         drop(_1) -> bb13;
+//         drop(_1) -> bb12;
 //     }
-//     bb13: {
+//     bb12: {
 //         StorageDead(_1);
 //         StorageDead(_3);
-//         goto -> bb6;
+//         goto -> bb5;
 //     }
 // }
 // END rustc.test.ElaborateDrops.before.mir

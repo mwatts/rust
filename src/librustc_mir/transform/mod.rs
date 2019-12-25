@@ -36,6 +36,7 @@ pub mod simplify;
 pub mod simplify_branches;
 pub mod simplify_try;
 pub mod uninhabited_enum_branching;
+pub mod unreachable_prop;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     self::check_unsafety::provide(providers);
@@ -278,6 +279,7 @@ fn run_optimization_passes<'tcx>(
         MirPhase::Optimized,
         &[
             // Remove all things only needed by analysis
+            &unreachable_prop::UnreachablePropagation,
             &no_landing_pads::NoLandingPads::new(tcx),
             &simplify_branches::SimplifyBranches::new("initial"),
             &remove_noop_landing_pads::RemoveNoopLandingPads,

@@ -30,19 +30,19 @@ fn main() {
 //         discriminant(_1) = 0;
 //         StorageLive(_2);
 //         _3 = discriminant(_1);
-//         switchInt(move _3) -> [0isize: bb3, 1isize: bb1, otherwise: bb2];
+//         switchInt(move _3) -> [0isize: bb2, otherwise: bb1];
 //     }
 //     bb1: {
 //         ((_2 as Foo).0: u8) = const 0u8;
 //         discriminant(_2) = 0;
-//         goto -> bb4;
+//         goto -> bb3;
 //     }
 //     ...
-//     bb3: {
+//     bb2: {
 //         _4 = ((_1 as Foo).0: u8);
 //         ((_2 as Foo).0: u8) = move _4;
 //         discriminant(_2) = 0;
-//         goto -> bb4;
+//         goto -> bb3;
 //     }
 //     ...
 // }
@@ -56,19 +56,19 @@ fn main() {
 //         discriminant(_1) = 0;
 //         StorageLive(_2);
 //         _3 = discriminant(_1);
-//         switchInt(move _3) -> [0isize: bb3, 1isize: bb1, otherwise: bb2];
+//         switchInt(move _3) -> [0isize: bb2, otherwise: bb1];
 //     }
 //     bb1: {
 //         ((_2 as Foo).0: u8) = const 0u8;
 //         discriminant(_2) = 0;
-//         goto -> bb4;
+//         goto -> bb3;
 //     }
 //     ...
-//     bb3: {
+//     bb2: {
 //         _4 = ((_1 as Foo).0: u8);
 //         ((_2 as Foo).0: u8) = move _4;
 //         discriminant(_2) = 0;
-//         goto -> bb4;
+//         goto -> bb3;
 //     }
 //     ...
 // }
